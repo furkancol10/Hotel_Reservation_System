@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========================
+// ENUMS
+// ========================
+
+enum UserRole {
+  ADMIN
+  STAFF
+  GUEST
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+// ========================
+// CORE TABLES
+// ========================
+
+model Tenant {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  email           String?
+  phone           String?
+  address         String?
+  logoUrl         String?  @map("logo_url")
+  themeColor      String?  @default("#6366f1") @map("theme_color")
+  defaultLanguage String   @default("en") @map("default_language")
+  timezone        String   @default("UTC")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users        User[]
+  roomTypes    RoomType[]
+  rooms        Room[]
+  reservations Reservation[]
+
+  @@map("tenants")
+}
+
+model User {
+  id                String   @id @default(uuid())
+  tenantId          String   @map("tenant_id")
+  email             String
+  passwordHash      String?  @map("password_hash")
+  fullName          String   @map("full_name")
+  role              UserRole @default(GUEST)
+  phone             String?
+  preferredLanguage String?  @default("en") @map("preferred_language")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RoomType {
+  id               String   @id @default(uuid())
+  tenantId         String   @map("tenant_id")
+  name             String
+  description      String?
+  capacity         Int
+  basePricePerNight Decimal @map("base_price_per_night") @db.Decimal(10, 2)
+  currency         String   @default("USD")
+  amenities        Json     @default("[]")
+  photos           Json     @default("[]")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rooms  Room[]
+
+  @@index([tenantId])
+  @@map("room_types")
+}
+
+model Room {
+  id         String     @id @default(uuid())
+  tenantId   String     @map("tenant_id")
+  roomTypeId String     @map("room_type_id")
+  roomNumber String     @map("room_number")
+  floor      Int
+  status     RoomStatus @default(AVAILABLE)
+  notes      String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roomType     RoomType      @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([tenantId, roomNumber])
+  @@index([tenantId])
+  @@index([roomTypeId])
+  @@map("rooms")
+}
+
+model Reservation {
+  id              String            @id @default(uuid())
+  tenantId        String            @map("tenant_id")
+  guestId         String            @map("guest_id")
+  roomId          String            @map("room_id")
+  checkInDate     DateTime          @map("check_in_date") @db.Date
+  checkOutDate    DateTime          @map("check_out_date") @db.Date
+  guestCount      Int               @default(1) @map("guest_count")
+  totalPrice      Decimal           @map("total_price") @db.Decimal(10, 2)
+  currency        String            @default("USD")
+  status          ReservationStatus @default(PENDING)
+  specialRequests String?           @map("special_requests")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  guest  User   @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([guestId])
+  @@index([roomId])
+  @@index([status])
+  @@index([checkInDate, checkOutDate])
+  @@map("reservations")
+}
