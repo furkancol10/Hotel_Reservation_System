@@ -1,42 +1,82 @@
-# sv
+# Hotel Reservation System
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Otel odalarını, oda tiplerini, misafirleri ve rezervasyonları yönetmek için geliştirilmiş SvelteKit tabanlı bir yönetim paneli. Veri modeli çok kiracılı (multi-tenant) tasarlanmıştır: her kayıt bir otele (`Tenant`) bağlıdır.
 
-## Creating a project
+<!-- TODO: Ekran görüntüleri eklenecek (panel, oda listesi, rezervasyon formu) -->
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Özellikler
 
-```sh
-# create a new project
-npx sv create my-app
+- Panel (dashboard) ana sayfası ve istatistik kartları
+- Oda yönetimi (`/rooms`): oda numarası, kat, durum (müsait, dolu, bakımda)
+- Oda tipi yönetimi (`/room-types`): kapasite, gecelik fiyat, para birimi, olanaklar
+- Misafir listesi (`/guests`)
+- Rezervasyon listesi, yeni rezervasyon oluşturma ve detay sayfası (`/reservations`, `/reservations/new`, `/reservations/[id]`)
+- Rezervasyon durumları: bekliyor, onaylı, giriş yaptı, çıkış yaptı, iptal
+- JSON API uçları: `/api/rooms`, `/api/room-types`, `/api/reservations`, `/api/guests`
+- Örnek verili seed betiği (Grand Hotel Istanbul)
+
+## Teknoloji
+
+- SvelteKit 2, Svelte 5, TypeScript, Vite
+- PostgreSQL
+- Prisma 7 (`@prisma/adapter-pg` + `pg`)
+- `dotenv`, `tsx` (seed çalıştırmak için)
+
+## Kurulum
+
+Gereksinimler: Node.js ve çalışan bir PostgreSQL veritabanı.
+
+```bash
+npm install
 ```
 
-To recreate this project with the same configuration:
+Proje kökünde `.env` dosyası oluşturun (repoda `.env.example` yoktur, `.env` git'e eklenmez):
 
-```sh
-# recreate this project
-npx sv@0.15.3 create --template minimal --types ts --install npm ./
+```env
+DATABASE_URL="postgresql://KULLANICI:SIFRE@localhost:5432/VERITABANI"
 ```
 
-## Developing
+Şemayı veritabanına uygulayın. Repoda `prisma/migrations` klasörü yok, bu yüzden `db push` kullanılır:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+```bash
+npx prisma generate
+npx prisma db push
+```
 
-```sh
+Örnek veriyi yükleyin (mevcut tüm kayıtları siler):
+
+```bash
+npx prisma db seed
+```
+
+Geliştirme sunucusunu başlatın:
+
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+## Komutlar
 
-To create a production version of your app:
+| Komut | Açıklama |
+|---|---|
+| `npm run dev` | Geliştirme sunucusu |
+| `npm run build` | Üretim derlemesi |
+| `npm run preview` | Derlemeyi önizleme |
+| `npm run check` | `svelte-check` ile tip kontrolü |
 
-```sh
-npm run build
+## Proje yapısı
+
+```
+prisma/
+  schema.prisma        Tenant, User, RoomType, Room, Reservation modelleri
+  seed.ts              Örnek veri
+prisma.config.ts       Prisma yapılandırması (DATABASE_URL, seed)
+src/
+  routes/              Sayfalar (rooms, room-types, guests, reservations) ve api/
+  lib/server/prisma.ts Prisma istemcisi
+  lib/server/db/       Veri erişim fonksiyonları
+  lib/components/      ui/, layout/, dashboard/ bileşenleri
+  lib/styles/          Global CSS
 ```
 
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Şema diyagramı için `hotel reservation schema.pdf` dosyasına bakın.
